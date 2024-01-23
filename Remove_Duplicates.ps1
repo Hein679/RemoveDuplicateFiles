@@ -1,9 +1,12 @@
 param(
     # $folderPath (*Required*) -> The root folder
-    [string]$folderPath,
+    [string]$FolderPath,
 
     # $Recurse Flag (*Optional*) -> Traverse sub-folders? 'False' by default
-    [switch]$Recurse
+    [switch]$Recurse,
+
+    # 'Don't Delete, just Print!' Flag (*Optional*) -> Prints the duplicated files
+    [switch]$NoDelete
 )
 
 function GetFileHash($filePath) {
@@ -26,12 +29,12 @@ function GetFileHash($filePath) {
     return $hashString
 }
 
-function RemoveDuplicates($folderPath, $includeSubFolders) {
+function RemoveDuplicates($FolderPath, $includeSubFolders) {
 
     # Stores hash values as keys and file paths as values
     $fileHashes = @{}
     
-    Get-ChildItem -Path $folderPath -Recurse:$includeSubFolders | ForEach-Object {
+    Get-ChildItem -Path $FolderPath -Recurse:$includeSubFolders | ForEach-Object {
 
         $filePath = $_.FullName
 
@@ -44,10 +47,20 @@ function RemoveDuplicates($folderPath, $includeSubFolders) {
         
         # Checks if hash already in hashtable
         if ($fileHashes.ContainsKey($hash)) {
+
             # Duplicate hash found
-            Write-Host "Duplicate found: $_"
-            Remove-Item -Path $_.FullName -Force
-        } else {
+
+            if ($NoDelete) {
+                # Don't delete, just print
+                Write-Host "File Path: $filePath"
+            }
+            else {
+                Write-Host "Duplicate found: $_"
+                Remove-Item -Path $_.FullName -Force
+            }
+            
+        }
+        else {
             # New file. Add to hashtable
             $fileHashes[$hash] = $filePath
         }
@@ -55,9 +68,10 @@ function RemoveDuplicates($folderPath, $includeSubFolders) {
 }
 
 # Check if folder path exists
-if (Test-Path $folderPath) {
-    RemoveDuplicates -folderPath $folderPath -includeSubFolders $Recurse
+if (Test-Path $FolderPath) {
+    RemoveDuplicates -folderPath $FolderPath -includeSubFolders $Recurse
     Write-Host "Finished....."
-} else {
-    Write-Host "Invalid folder path: $folderPath"
+}
+else {
+    Write-Host "Invalid folder path: $FolderPath"
 }
